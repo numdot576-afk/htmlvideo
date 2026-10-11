@@ -7,6 +7,8 @@ Type a topic, and Claude writes a 3D vertical (1080×1920) "How X works" explain
 | `examples/how-morse-code-works.html` | 5 scenes, 22 s |
 | `examples/how-a-clutch-works.html` | 5 scenes, 50 s |
 
+**Videos made so far** (in `videos/`): how goal-line technology works, how a match ball is made, why the grass has stripes, the pitch that slides away, how semi-automated offside works.
+
 Open any `.html` file in a browser to watch it (play/pause, scene buttons, seek, ● REC to record).
 
 ## Make a video on GitHub
