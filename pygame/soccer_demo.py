@@ -18,6 +18,7 @@ import subprocess
 import sys
 
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+os.environ.setdefault("SDL_VIDEO_CENTERED", "1")  # open the window in the middle of the screen
 import pygame  # noqa: E402
 import pygame.gfxdraw  # noqa: E402
 
@@ -804,13 +805,16 @@ def play(args):
     info = pygame.display.Info()
     scale = args.scale or (min(1.0, (info.current_h - 100) / H) if info.current_h > 0 else 0.5)
     r = Renderer(scale)
+    print(f"Opening the demo window ({r.w}x{r.h}) ...", flush=True)
     screen = pygame.display.set_mode((r.w, r.h))
     pygame.display.set_caption("Pygame soccer demo  -  Space pause, arrows seek, 1-3 scenes, S screenshot")
+    print("Playing. Space pause, Left/Right seek, 1-3 scenes, S screenshot, Esc or close the window to quit.", flush=True)
     clock, t, playing = pygame.time.Clock(), 0.0, True
     while True:
         dt = clock.tick(60) / 1000
         for e in pygame.event.get():
             if e.type == pygame.QUIT or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
+                print("Window closed.", flush=True)
                 return
             if e.type == pygame.KEYDOWN:
                 if e.key == pygame.K_SPACE:
@@ -841,6 +845,7 @@ def main():
     args = ap.parse_args()
     if args.render or args.frames:
         os.environ["SDL_VIDEODRIVER"] = "dummy"
+    print(f"Pygame soccer demo: pygame {pygame.version.ver}, Python {sys.version.split()[0]}", flush=True)
     pygame.display.init()  # no audio needed, so no mixer
     pygame.font.init()
     try:
