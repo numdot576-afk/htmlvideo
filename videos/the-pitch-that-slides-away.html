@@ -578,23 +578,23 @@ function frost(x,y,w,h,r,a){
 }
 function ls(px){if(HASLS)octx.letterSpacing=px+'px'}
 
-const capCache={};
+const capCache={},CAPPX=CFG.capPx||62,CAPLH=Math.round(CAPPX*1.29);
 function capLayout(txt){
   if(capCache[txt])return capCache[txt];
-  const g=octx;g.font='800 62px '+FONT;ls(0);
+  const g=octx;g.font='800 '+CAPPX+'px '+FONT;ls(0);
   const words=[];let hl=false;txt.split(' ').forEach(wd=>{let w=wd,st=hl;if(w.startsWith('*')){st=true;w=w.slice(1)}let end=false;if(w.endsWith('*')){end=true;w=w.slice(0,-1)}else if(/\*[.,:;!?]$/.test(w)){end=true;w=w.replace('*','')}words.push({t:w,hl:st,w:g.measureText(w).width});hl=end?false:st});
   const sp=g.measureText(' ').width,maxW=880,lines=[[]];let cw=0;
   words.forEach(o=>{if(cw&&cw+sp+o.w>maxW){lines.push([]);cw=0}lines[lines.length-1].push(o);cw+=(cw?sp:0)+o.w});
   const lw=lines.map(L=>L.reduce((s,o,i)=>s+o.w+(i?sp:0),0));
-  return capCache[txt]={lines,lw,sp,bw:Math.max(...lw)+80,bh:lines.length*80+44};
+  return capCache[txt]={lines,lw,sp,bw:Math.max(...lw)+80,bh:lines.length*CAPLH+44};
 }
 
 function drawCaption(txt,age,acc){
   const g=octx,L=capLayout(txt),bx=(W-L.bw)/2,by=1530-L.bh,ka=easeOutCubic(age/.3);
   g.save();g.globalAlpha=ka;const sc=.94+.06*ka;g.translate(W/2,by+L.bh/2);g.scale(sc,sc);g.translate(-W/2,-(by+L.bh/2));
   frost(bx,by,L.bw,L.bh,30,.5);g.restore();
-  g.font='800 62px '+FONT;ls(0);g.textBaseline='alphabetic';g.textAlign='left';let wi=0;
-  L.lines.forEach((line,li)=>{let x=(W-L.lw[li])/2;const y=by+22+li*80+62;
+  g.font='800 '+CAPPX+'px '+FONT;ls(0);g.textBaseline='alphabetic';g.textAlign='left';let wi=0;
+  L.lines.forEach((line,li)=>{let x=(W-L.lw[li])/2;const y=by+22+li*CAPLH+CAPPX;
     line.forEach(o=>{const d=wi*.07,k=clamp((age-d)/.3);wi++;
       if(k>0){const s=.6+.4*easeOutBack(k);g.save();g.globalAlpha=clamp(k*1.6);g.translate(x+o.w/2,y-22);g.scale(s,s);g.translate(-(x+o.w/2),-(y-22)+(1-k)*16);
         g.shadowColor='rgba(0,0,0,.55)';g.shadowBlur=10;g.shadowOffsetY=3;g.fillStyle=o.hl?acc:'#ffffff';g.fillText(o.t,x,y);g.restore()}
