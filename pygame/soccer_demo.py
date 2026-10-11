@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Soccer demo in pygame: a 16.5 s vertical (1080x1920) animation drawn with plain pygame and a little 3D maths.
 
     python soccer_demo.py                      play in a window
