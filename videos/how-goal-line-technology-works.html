@@ -37,8 +37,7 @@
 <div id="ctl">
   <button id="play" title="Play / pause (Space)">❚❚</button>
   <div class="sep"></div>
-  <button class="sc" data-s="0">In?</button><button class="sc" data-s="1">Rule</button><button class="sc" data-s="2">Cameras</button>
-  <button class="sc" data-s="3">Tracking</button><button class="sc" data-s="4">Watch</button>
+  <button class="sc" data-s="0">In?</button><button class="sc" data-s="1">Rule</button><button class="sc" data-s="2">Cameras</button><button class="sc" data-s="3">Tracking</button><button class="sc" data-s="4">Watch</button>
   <div class="sep"></div>
   <input id="seek" type="range" min="0" max="28" step="0.001" value="0">
   <span id="time">0.0 / 28 s</span>
@@ -51,22 +50,26 @@
 window.addEventListener("error",e=>{let d=document.getElementById("err");if(!d){d=document.createElement("div");d.id="err";d.style.cssText="position:absolute;inset:0;z-index:9;background:#1a0f0f;color:#ffb4a8;padding:18px;font:13px/1.5 system-ui;overflow:auto";document.getElementById("stage").appendChild(d)}d.textContent="Error: "+e.message+" ("+(e.filename||"").split("/").pop()+":"+e.lineno+")"});
 if(typeof THREE==="undefined"){document.getElementById("stage").innerHTML="<div style=\"padding:18px;color:#ffb4a8\">Three.js did not load (needs internet access to cdnjs.cloudflare.com). Check your connection or ad-blocker and reload.</div>";throw new Error("THREE missing")}
 const EMBED=/[?&]embed=1/.test(location.search);if(EMBED)document.documentElement.classList.add("embed");
+
+const CFG={title:'HOW GOAL-LINE TECHNOLOGY WORKS',led:'GOAL-LINE TECHNOLOGY     •     HOW IT WORKS     •',rec:'how-goal-line-technology-works',
+  sdur:[5.2,5.6,5.4,5.6,6.2],
+  looks:[['#03050c','#0b1a36','#3a6bff',.9,'#ffd24a'],['#02070a','#062026','#19d3c5',.6,'#5cf2ff'],['#07030f','#1d0b3d','#9b5cff',1.0,'#7cf0ff'],['#02060c','#071a2c','#2aa8ff',.9,'#4fd1ff'],['#020a05','#06200f','#2aff7a',.7,'#45f08a']]};
+/* FACTS: Law 10: a goal needs the WHOLE ball over the WHOLE line (lines and posts are at most 12 cm wide; the goal is
+   7.32 m x 2.44 m; the ball is ~22 cm across). Camera systems use 7 high-speed cameras per goal, high in the stadium roof;
+   the result reaches the referee's watch within one second. */
 /* =====================================================================================
    EXPLAINER TEMPLATE: rules this file follows (keep them for every new topic)
    1. One 1080x1920 canvas. Three.js draws the 3D; title, HUD, callouts and captions are drawn on top
       every frame, so REC, ?embed=1 and the MP4 renderer capture everything.
    2. Timing lives in SDUR/SSTART/TOTAL; setTiming([...]) re-times scenes to a voice-over. Choreography
-      uses p = t/SDUR[i]; the ball's flight uses real physics in seconds (incident time "tau").
+      uses p = t/SDUR[i]; anything with a real-world speed (a ball in flight) uses seconds.
       Callout windows are fractions of the scene.
    3. Every frame is a pure function of time: no rnd() in updates, no state carried between frames.
-      Shared objects (ball, keeper, referee, cameras) are reset every frame, then posed by the scene.
+      Shared objects (ball, players, props) are reset every frame, then posed by the scene.
    4. Each scene = its own overlay group + updateN(t) returning the HUD {main, sub, bar, stat}.
-      The stadium, goal, ball and players live in one shared world that every scene poses.
-   5. One source of truth: the ball's path ballAt(tau) drives the hook, the tracking lines and the
-      verdict, so the ball the cameras find is exactly the ball you saw.
-   6. Facts only. Law 10: a goal needs the WHOLE ball over the WHOLE line (lines and posts are at most
-      12 cm wide; the goal is 7.32 m x 2.44 m; the ball is ~22 cm across). Camera systems use 7 high-
-      speed cameras per goal, high in the stadium roof; the referee's watch gets the result within 1 s.
+      The stadium, pitch, ball and players live in one shared world that every scene poses.
+   5. One source of truth: what moves, what lights up and what the HUD says read the same values.
+   6. Facts only (see the FACTS note below). If a number is uncertain, it is left out.
    7. Captions: 2 short cards per scene. Callout labels <= ~22 characters, stat values <= ~8 characters.
    8. Fade from black at the start and to black at the end, so the loop is seamless.
    9. Only show things a viewer can name or that the captions explain; one idea per scene.
@@ -76,11 +79,10 @@ const EMBED=/[?&]embed=1/.test(location.search);if(EMBED)document.documentElemen
    ===================================================================================== */
 
 /* ============================== timing & helpers ============================== */
-const NS=5,W=1080,H=1920;
-let SDUR=[5.2,5.6,5.4,5.6,6.2];
-let SSTART=[0,5.2,10.8,16.2,21.8];
-let TOTAL=28.0;
-function setTiming(d){SDUR=d;SSTART=[];let a=0;d.forEach(x=>{SSTART.push(a);a+=x});TOTAL=a;el.seek.max=TOTAL}
+const NS=CFG.sdur.length,W=1080,H=1920;
+let SDUR=[],SSTART=[],TOTAL=0;
+function retime(d){SDUR=d.slice();SSTART=[];let a=0;d.forEach(x=>{SSTART.push(a);a+=x});TOTAL=a}
+retime(CFG.sdur);
 const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
 const sm=x=>{x=clamp(x);return x*x*(3-2*x)};
 const seg=(t,a,b)=>clamp((t-a)/(b-a));
@@ -162,13 +164,7 @@ void main(){
 }`,depthWrite:false,depthTest:false});
 const bgQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),bgMat);bgQuad.frustumCulled=false;bgQuad.renderOrder=-100;scene.add(bgQuad);
 
-const LOOKS=[ // one look per scene: night sky + accent (HUD, captions, callouts)
-  {edge:lin('#03050c'),mid:lin('#0b1a36').multiplyScalar(1.2),glow:lin('#3a6bff').multiplyScalar(.9),acc:'#ffd24a',exp:1.0},
-  {edge:lin('#02070a'),mid:lin('#062026').multiplyScalar(1.2),glow:lin('#19d3c5').multiplyScalar(.6),acc:'#5cf2ff',exp:1.0},
-  {edge:lin('#07030f'),mid:lin('#1d0b3d').multiplyScalar(1.2),glow:lin('#9b5cff').multiplyScalar(1.0),acc:'#7cf0ff',exp:1.0},
-  {edge:lin('#02060c'),mid:lin('#071a2c').multiplyScalar(1.2),glow:lin('#2aa8ff').multiplyScalar(.9),acc:'#4fd1ff',exp:1.0},
-  {edge:lin('#020a05'),mid:lin('#06200f').multiplyScalar(1.2),glow:lin('#2aff7a').multiplyScalar(.7),acc:'#45f08a',exp:1.0}
-];
+const LOOKS=CFG.looks.map(l=>({edge:lin(l[0]),mid:lin(l[1]).multiplyScalar(1.2),glow:lin(l[2]).multiplyScalar(l[3]),acc:l[4],exp:l[5]||1}));
 
 const hemi=new THREE.HemisphereLight(0xd5e6ff,0x15240f,.55);scene.add(hemi);
 const key=new THREE.DirectionalLight(0xfff4e6,2.6);key.castShadow=true;key.shadow.mapSize.set(2048,2048);key.shadow.bias=-.0003;key.shadow.normalBias=.01;
@@ -224,7 +220,7 @@ const T_PLANE=tex(cvs(64,256,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h);
 const T_LED=(()=>{const c=cvs(1024,64,()=>{}),t=tex(c,{srgb:true});t.anisotropy=MAXANI;
   const paint=()=>{const g=c.getContext('2d');g.fillStyle='#04101c';g.fillRect(0,0,1024,64);const gr=g.createLinearGradient(0,0,1024,0);gr.addColorStop(0,'#1a3cff');gr.addColorStop(.5,'#18d6ff');gr.addColorStop(1,'#1a3cff');
     g.fillStyle=gr;g.fillRect(0,0,1024,5);g.fillRect(0,59,1024,5);g.font='900 32px "Inter Tight",system-ui,sans-serif';g.textBaseline='middle';g.fillStyle='#e9f6ff';
-    g.fillText('GOAL-LINE TECHNOLOGY     •     HOW IT WORKS     •',24,33);t.needsUpdate=true};
+    g.fillText(CFG.led,24,33);t.needsUpdate=true};
   paint();PAINTERS.push(paint);return t})();
 // classic 32-panel ball: 12 black pentagons on the icosahedron's corners, white hexagons, grey seams
 const T_BALL=(()=>{
@@ -260,7 +256,7 @@ const MAT={
   post:new THREE.MeshPhysicalMaterial({color:lin('#f7f8fa'),roughness:.22,metalness:0,clearcoat:1,clearcoatRoughness:.1}),
   net:new THREE.MeshStandardMaterial({map:T_NET,color:lin('#eef1f5'),transparent:true,depthWrite:false,side:THREE.DoubleSide,roughness:.8}),
   ball:new THREE.MeshPhysicalMaterial({map:T_BALL,roughness:.36,clearcoat:.5,clearcoatRoughness:.25}),
-  crowd:new THREE.MeshStandardMaterial({map:T_CROWD,roughness:1,emissive:lin('#ffffff'),emissiveMap:T_CROWD,emissiveIntensity:.22,side:THREE.DoubleSide}),
+  crowd:new THREE.MeshStandardMaterial({map:T_CROWD,roughness:1,emissive:lin('#ffffff'),emissiveMap:T_CROWD,emissiveIntensity:.14,side:THREE.DoubleSide}),
   concrete:new THREE.MeshStandardMaterial({color:lin('#1b1f27'),roughness:.9,side:THREE.DoubleSide}),
   roof:new THREE.MeshStandardMaterial({color:lin('#262b35'),roughness:.6,metalness:.4}),
   truss:new THREE.MeshStandardMaterial({color:lin('#59606e'),roughness:.4,metalness:.8}),
@@ -363,43 +359,11 @@ function buildStadium(){
   T_LED.repeat.set(4.6,1);
   const b=box(64,.9,.12,MAT.board);b.position.set(0,.45,4.6);g.add(b);
   const led=new THREE.Mesh(new THREE.PlaneGeometry(64,.84),MAT.led);led.rotation.y=Math.PI;led.position.set(0,.45,4.535);g.add(led);
-  return {root:g,roofTag:tag(g,-12,ROOF_Y-.4,8.6)};
+  // floodlight lamps: glowing points along every roof edge
+  const lamps=[];for(let x=-66;x<=66;x+=6)lamps.push(V(x,ROOF_Y-.45,8.5));[-1,1].forEach(s=>{for(let z=-100;z<=6;z+=6)lamps.push(V(41.7*s,ROOF_Y-.45,z))});
+  lamps.forEach(p=>{const l=glowSprite(new THREE.Color(2.2,2.1,1.8),2.6);l.material.opacity=1;l.position.copy(p);g.add(l)});
+  return {root:g,roofTag:tag(g,-4,ROOF_Y-.4,8.6)};
 }
-
-/* ---- tracking cameras: 7 per goal, hung under the roof edge, each aimed at the goal mouth ---- */
-const CAM_POS=[V(0,19.0,9.4),V(-8,19.0,9.4),V(8,19.0,9.4),V(-42.2,19.0,-4),V(-42.2,19.0,3),V(42.2,19.0,-4),V(42.2,19.0,3)];
-const AIM=V(0,1.1,.3);
-function buildTrackCam(pos){
-  const m=new THREE.Group();m.position.copy(pos);m.scale.setScalar(1.5); // drawn bigger than life so you can see them from the pitch
-  const arm=cyl(.07,.07,1.2,10,MAT.truss);arm.position.y=.6;m.add(arm);
-  const head=new THREE.Group();m.add(head);
-  head.add(box(.5,.5,1.1,MAT.camBody));
-  const hood=box(.62,.06,.5,MAT.camBody);hood.position.set(0,.29,.45);head.add(hood);
-  const lens=cyl(.17,.17,.24,28,MAT.camLens);lens.rotation.x=Math.PI/2;lens.position.z=.66;head.add(lens);
-  const ring=cyl(.205,.205,.07,28,MAT.truss);ring.rotation.x=Math.PI/2;ring.position.z=.56;head.add(ring);
-  const ledM=new THREE.MeshBasicMaterial({color:new THREE.Color(.12,.02,.02)});const led=new THREE.Mesh(new THREE.SphereGeometry(.07,12,8),ledM);led.position.set(0,.3,-.35);head.add(led);
-  const tally=glowSprite(new THREE.Color(3,.3,.2),1.4);tally.position.set(0,.36,-.35);head.add(tally);
-  m.updateMatrixWorld(true);head.lookAt(AIM); // the lens (+z) points at the goal mouth
-  return {root:m,head,tally,ledM,lensTag:tag(head,0,0,.8)};
-}
-function camOn(C,k){C.tally.material.opacity=k;C.ledM.color.setRGB(lerp(.12,3,k),lerp(.02,.25,k),lerp(.02,.2,k))}
-
-/* ---- the ball and its one true path: shot -> underside of the bar -> down behind the line -> spins back out ---- */
-function buildBall(){const g=new THREE.Group(),s=new THREE.Mesh(new THREE.SphereGeometry(BR,48,32),MAT.ball);s.castShadow=true;g.add(s);return{root:g,mesh:s,tag:tag(g,0,0,0)}}
-const GRAV=V(0,-9.81,0);
-function arc(p0,p1,T){return{p0,T,v:p1.clone().sub(p0).addScaledVector(GRAV,-.5*T*T).multiplyScalar(1/T)}} // ballistic hop from p0 to p1 in T seconds
-const INC=[arc(V(-1.6,BR,-11),V(.95,2.335,-.03),.5),  // shot from near the penalty spot to the underside of the bar
-           arc(V(.95,2.335,-.03),V(1.05,BR,.28),.22), // knocked down: lands 17 cm past the line
-           arc(V(1.05,BR,.28),V(1.25,BR,-1.9),.75),   // backspin carries it out again
-           arc(V(1.25,BR,-1.9),V(1.35,BR,-2.6),.4)];
-const SPIN=[20,20,-14,-9],ROLL={p0:V(1.35,BR,-2.6),p1:V(1.42,BR,-3.1),T:.9};
-const T_BAR=.5,T_LAND=.72,T_CROSS=.5+(BR+.03)/((.28+.03)/.22); // tau when the whole ball is past the line's back edge
-function ballAt(tau,o){let t=Math.max(0,tau),ang=0;
-  for(let i=0;i<INC.length;i++){const s=INC[i];if(t<=s.T){o.pos.copy(s.p0).addScaledVector(s.v,t).addScaledVector(GRAV,.5*t*t);o.ang=ang+SPIN[i]*t;return o}ang+=SPIN[i]*s.T;t-=s.T}
-  const k=easeOutCubic(t/ROLL.T);o.pos.lerpVectors(ROLL.p0,ROLL.p1,k);o.ang=ang-ROLL.p0.distanceTo(ROLL.p1)*k/BR;return o}
-const _b={pos:new THREE.Vector3(),ang:0};
-const gapOf=z=>z-BR;                                        // > 0: the whole ball is beyond the back edge of the line
-const lineState=z=>z-BR>0?'goal':Math.abs(z)<BR?'touch':'out';
 
 /* ---- people: simple mannequins with arms aimed by direction (so poses read clearly) ---- */
 function buildPerson(k){
@@ -446,6 +410,50 @@ const RP={ // referee
   watch:{drop:0,lean:.06,twist:-.12,nod:.55,turn:-.1,hipL:[0,0,.06],knL:.04,hipR:[0,0,-.06],knR:.04,uL:[.35,-.55,.6],fL:[-.85,.25,.45],uR:[-.15,-1,.05],fR:[-.1,-.95,.3]}
 };
 
+/* ============================== camera helpers ============================== */
+// a camera pose is [x,y,z, lookX,lookY,lookZ]. orbit() builds one around a centre, mixCam() blends two, setCam() applies it.
+function orbit(cx,cy,cz,deg,r,h,lx,ly,lz){const a=deg*Math.PI/180;return[cx+Math.sin(a)*r,cy+h,cz+Math.cos(a)*r,lx,ly,lz]}
+function mixCam(a,b,k){return a.map((v,i)=>lerp(v,b[i],k))}
+function setCam(c,fov,t,drift=1,up){const d=.01*drift*Math.hypot(c[0]-c[3],c[1]-c[4],c[2]-c[5]);
+  camera.position.set(c[0]+Math.sin(t*1.7)*d,c[1]+Math.sin(t*1.3)*d*.8,c[2]);if(up)camera.up.copy(up);else camera.up.set(0,1,0);camera.lookAt(c[3],c[4],c[5]);
+  if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix()}}
+
+
+/* ---- tracking cameras: 7 per goal, hung under the roof edge, each aimed at the goal mouth ---- */
+const CAM_POS=[V(0,19.0,9.4),V(-8,19.0,9.4),V(8,19.0,9.4),V(-42.2,19.0,-4),V(-42.2,19.0,3),V(42.2,19.0,-4),V(42.2,19.0,3)];
+const AIM=V(0,1.1,.3);
+function buildTrackCam(pos){
+  const m=new THREE.Group();m.position.copy(pos);m.scale.setScalar(1.5); // drawn bigger than life so you can see them from the pitch
+  const arm=cyl(.07,.07,1.2,10,MAT.truss);arm.position.y=.6;m.add(arm);
+  const head=new THREE.Group();m.add(head);
+  head.add(box(.5,.5,1.1,MAT.camBody));
+  const hood=box(.62,.06,.5,MAT.camBody);hood.position.set(0,.29,.45);head.add(hood);
+  const lens=cyl(.17,.17,.24,28,MAT.camLens);lens.rotation.x=Math.PI/2;lens.position.z=.66;head.add(lens);
+  const ring=cyl(.205,.205,.07,28,MAT.truss);ring.rotation.x=Math.PI/2;ring.position.z=.56;head.add(ring);
+  const ledM=new THREE.MeshBasicMaterial({color:new THREE.Color(.12,.02,.02)});const led=new THREE.Mesh(new THREE.SphereGeometry(.07,12,8),ledM);led.position.set(0,.3,-.35);head.add(led);
+  const tally=glowSprite(new THREE.Color(3,.3,.2),1.4);tally.position.set(0,.36,-.35);head.add(tally);
+  m.updateMatrixWorld(true);head.lookAt(AIM); // the lens (+z) points at the goal mouth
+  return {root:m,head,tally,ledM,lensTag:tag(head,0,0,.8)};
+}
+function camOn(C,k){C.tally.material.opacity=k;C.ledM.color.setRGB(lerp(.12,3,k),lerp(.02,.25,k),lerp(.02,.2,k))}
+
+/* ---- the ball and its one true path: shot -> underside of the bar -> down behind the line -> spins back out ---- */
+function buildBall(){const g=new THREE.Group(),s=new THREE.Mesh(new THREE.SphereGeometry(BR,48,32),MAT.ball);s.castShadow=true;g.add(s);return{root:g,mesh:s,tag:tag(g,0,0,0)}}
+const GRAV=V(0,-9.81,0);
+function arc(p0,p1,T){return{p0,T,v:p1.clone().sub(p0).addScaledVector(GRAV,-.5*T*T).multiplyScalar(1/T)}} // ballistic hop from p0 to p1 in T seconds
+const INC=[arc(V(-1.6,BR,-11),V(.95,2.335,-.03),.5),  // shot from near the penalty spot to the underside of the bar
+           arc(V(.95,2.335,-.03),V(1.05,BR,.28),.22), // knocked down: lands 17 cm past the line
+           arc(V(1.05,BR,.28),V(1.25,BR,-1.9),.75),   // backspin carries it out again
+           arc(V(1.25,BR,-1.9),V(1.35,BR,-2.6),.4)];
+const SPIN=[20,20,-14,-9],ROLL={p0:V(1.35,BR,-2.6),p1:V(1.42,BR,-3.1),T:.9};
+const T_BAR=.5,T_LAND=.72,T_CROSS=.5+(BR+.03)/((.28+.03)/.22); // tau when the whole ball is past the line's back edge
+function ballAt(tau,o){let t=Math.max(0,tau),ang=0;
+  for(let i=0;i<INC.length;i++){const s=INC[i];if(t<=s.T){o.pos.copy(s.p0).addScaledVector(s.v,t).addScaledVector(GRAV,.5*t*t);o.ang=ang+SPIN[i]*t;return o}ang+=SPIN[i]*s.T;t-=s.T}
+  const k=easeOutCubic(t/ROLL.T);o.pos.lerpVectors(ROLL.p0,ROLL.p1,k);o.ang=ang-ROLL.p0.distanceTo(ROLL.p1)*k/BR;return o}
+const _b={pos:new THREE.Vector3(),ang:0};
+const gapOf=z=>z-BR;                                        // > 0: the whole ball is beyond the back edge of the line
+const lineState=z=>z-BR>0?'goal':Math.abs(z)<BR?'touch':'out';
+
 /* ---- the referee's watch: on the left wrist, screen faces the referee's eyes ---- */
 function buildWatch(forearm){
   const mount=new THREE.Group();mount.position.set(0,-.235,0);forearm.add(mount);
@@ -453,8 +461,8 @@ function buildWatch(forearm){
   const face=new THREE.Group();face.position.z=.05;mount.add(face);              // +z = out of the screen
   const body=slab(rrShape(.042,.05,.01),.012,MAT.watchBody,.002);body.rotation.x=Math.PI/2;face.add(body);
   const c=cvs(256,304,()=>{}),t=tex(c,{srgb:true,clamp:true});
-  const scrM=new THREE.MeshBasicMaterial({map:t});const scr=new THREE.Mesh(new THREE.PlaneGeometry(.037,.044),scrM);scr.position.z=.0075;scr.rotation.z=-Math.PI/2;face.add(scr); // 12 o'clock across the wrist
-  const rings=[0,1,2].map(()=>{const m=new THREE.Mesh(new THREE.RingGeometry(.93,1,48),additive(.3,2.2,.8,0));m.position.z=.004;face.add(m);return m});
+  const scrM=new THREE.MeshBasicMaterial({map:t});const scr=new THREE.Mesh(new THREE.PlaneGeometry(.037,.044),scrM);scr.position.z=.0096;scr.rotation.z=-Math.PI/2;face.add(scr); // 12 o'clock across the wrist
+  const rings=[0,1,2].map(()=>{const m=new THREE.Mesh(new THREE.RingGeometry(.93,1,48),additive(.3,2.2,.8,0));m.position.z=.0099;face.add(m);return m});
   rings.forEach(r=>r.rotation.z=-Math.PI/2);
   let state='';
   const paint=s=>{state=s;const g=c.getContext('2d'),w=256,h=304;g.fillStyle='#000';g.fillRect(0,0,w,h);
@@ -547,6 +555,7 @@ function update0(t){
 
 /* ---------- SCENE 2 : THE RULE. WHOLE BALL OVER THE WHOLE LINE ---------- */
 const S2=groups[1];
+const S2_PLANE_A=.32; // the sheet fills this close-up, so it glows softly
 const S2_Foot=new THREE.Mesh(new THREE.RingGeometry(.096,.11,48),additive(.3,.85,1.6,.9));S2_Foot.rotation.x=-Math.PI/2;S2.add(S2_Foot); // the ball's outline on the grass
 call(1,PLANE.tag,V(0,0,0),'BACK EDGE OF LINE',.04,.32,-1);
 call(1,BALL.tag,V(0,.02,0),'PARTLY ON THE LINE',.34,.6,-1);
@@ -556,7 +565,7 @@ function update1(t){
   const dur=SDUR[1],p=t/dur;
   const z=lerp(lerp(-.75,.04,easeInOut(seg(t,.3,1.9))),.17,easeInOut(seg(t,3.0,3.9))); // roll in, stop half on the line, roll on
   placeBall(_v1.set(1.0,BR,z),(z+.75)/BR,0);KEEP.root.visible=false;REF.root.visible=false;
-  const st=lineState(z);PLANE.root.visible=true;planeState(PLANE,sm(seg(t,0,.5)),st,BALL.root.position);
+  const st=lineState(z);PLANE.root.visible=true;planeState(PLANE,S2_PLANE_A*sm(seg(t,0,.5)),st,BALL.root.position);
   const c=st==='goal'?[.2,1.7,.55]:st==='touch'?[1.9,.25,.15]:[.3,.85,1.6];S2_Foot.material.color.setRGB(...c);S2_Foot.position.set(1.0,.004,z);
   setCam(mixCam([2.25,.68,-.95,1.0,.12,-.05],[2.0,.56,-.66,1.0,.1,.05],easeInOut(p)),40,t);
   const g=Math.round(gapOf(z)*100);
@@ -608,7 +617,7 @@ function segSeg(p1,q1,p2,q2){ // closest approach of two segments -> {d, s along
   let s=den>1e-9?clamp((b*f-c*e)/den):0,t=(b*s+f)/e;if(t<0){t=0;s=clamp(-c/a)}else if(t>1){t=1;s=clamp((b-c)/a)}
   return{d:p1.clone().addScaledVector(d1,s).distanceTo(p2.clone().addScaledVector(d2,t)),s}}
 call(3,BALL.tag,V(0,0,0),'BALL FOUND IN 3D',.12,.5,1);
-call(3,KEEP.headTag,V(0,0,0),'BLOCKED BY KEEPER',.62,.97,-1);
+call(3,KEEP.spine,V(0,.3,0),'BLOCKED BY KEEPER',.62,.97,-1);
 
 function update3(t){
   const dur=SDUR[3],p=t/dur,tau=lerp(.4,T_LAND,easeInOut(seg(p,.04,.72))); // slow motion down to the landing, then hold
@@ -623,26 +632,25 @@ function update3(t){
   for(let j=0;j<40;j++){const tt=tau-j*.012,e=tt<.38?0:a*(1-j/40);const q=ballAt(tt,{pos:_v2,ang:0}).pos;S4_Trail.put(j,q.x,q.y,q.z,.4*e,1.5*e,2.4*e)}
   S4_Trail.done();
   S4_Ghost.position.copy(bp);S4_Ghost.rotation.set(t*.8,t*1.1,0);S4_Ghost.scale.setScalar(1+.08*Math.sin(t*9));S4_Ghost.material.opacity=.8*a;
-  setCam(mixCam([3.7,3.1,-4.7,.45,.85,.2],[2.7,2.4,-3.5,.4,.6,.2],easeInOut(p)),40,t);
+  setCam(mixCam([5.2,3.4,-6.4,.2,1.0,.2],[4.3,2.7,-5.4,.15,.85,.2],easeInOut(p)),40,t);
   return{main:'TRACKING',sub:seen<7?'the keeper blocks some views, not all':'every camera can see the ball',bar:p,stat:['CAMERAS',seen+'/7']};
 }
 
 /* ---------- SCENE 5 : THE VERDICT. GOAL, ON THE REFEREE'S WATCH ---------- */
-const S5_CUT=.85,S5_BUZZ=1.05; // the whole ball crosses at ~0.2 s; the watch buzzes ~0.85 s later
-call(4,WATCH.tag,V(0,0,0),"REFEREE'S WATCH",.22,.56,-1);
+const S5_CUT=1.05,S5_BUZZ=1.25; // the whole ball crosses at ~0.33 s; the watch buzzes ~0.9 s later
 
 function update4(t){
-  const dur=SDUR[4],p=t/dur,tau=lerp(.5,T_LAND,seg(t,0,.6));
+  const dur=SDUR[4],p=t/dur,tau=lerp(.5,T_LAND,seg(t,0,.7));
   placeBall(ballAt(tau,_b).pos,_b.ang);poseKeeper(tau);poseRef(RP.watch);
   const z=BALL.root.position.z,st=lineState(z),goal=tau>=T_CROSS;
-  PLANE.root.visible=true;planeState(PLANE,1,goal?'goal':st==='touch'?'touch':'out',BALL.root.position);
-  GOAL_LBL.position.set(1.05,.62+.06*Math.sin(t*3),.28);GOAL_LBL.material.opacity=goal?sm(seg(t,.25,.45)):0;GOAL_LBL.scale.set(.42*256/96,.42,1).multiplyScalar(goal?.7+.3*easeOutBack(seg(t,.25,.55)):1);
+  PLANE.root.visible=true;planeState(PLANE,lerp(.4,1,seg(t,2.5,4)),goal?'goal':st==='touch'?'touch':'out',BALL.root.position);
+  GOAL_LBL.position.set(1.05,.78+.05*Math.sin(t*3),.28);GOAL_LBL.material.opacity=goal?sm(seg(t,.33,.5)):0;
   // the watch: buzzes in pulses, screen turns green
   const b=t-S5_BUZZ,on=b>=0;WATCH.set(on?'goal':'idle');WATCH.scrM.color.setScalar(on?1.6:1);
   const pulse=on&&b<3.2&&(b%.55)<.32;WATCH.face.position.set(pulse?.0012*Math.sin(t*140):0,pulse?.0012*Math.cos(t*170):0,.05);
   WATCH.rings.forEach((r,i)=>{const u=on?((b+i*.22)%.66)/.66:0;r.scale.setScalar(.025+.07*u);r.material.opacity=on&&b<3.4?(1-u)*.9:0});
   // shots: line view -> close-up on the watch -> pull back over the referee's shoulder
-  const lineShot=mixCam([1.95,1.55,-.9,1.05,.15,.12],[1.7,1.3,-.66,1.05,.12,.16],easeInOut(seg(t,0,S5_CUT)));
+  const lineShot=mixCam([2.7,1.5,-1.7,.9,.5,.1],[2.4,1.3,-1.35,.95,.4,.12],easeInOut(seg(t,0,S5_CUT)));
   const wc=WATCH.camTag.getWorldPosition(new THREE.Vector3()),wl=WATCH.tag.getWorldPosition(new THREE.Vector3());
   const wup=_v1.set(1,0,0).transformDirection(WATCH.face.matrixWorld).clone(); // screen "12 o'clock" in world space
   const close=[wc.x,wc.y,wc.z,wl.x,wl.y,wl.z];
@@ -652,11 +660,11 @@ function update4(t){
   const whip=Math.pow(clamp(1-Math.abs(t-S5_CUT)/.16),2);
   if(t<S5_CUT)setCam(lineShot,40,t);
   else setCam(mixCam(close,over,k),lerp(38,40,k),t,k,_v2.copy(wup).lerp(_up,k).normalize());
+  const ls=.055*camera.position.distanceTo(GOAL_LBL.position)*(goal?.7+.3*easeOutBack(seg(t,.33,.6)):1);GOAL_LBL.scale.set(ls*256/96,ls,1); // same size on screen in every shot
   return{main:goal?'GOAL':'',sub:on?"signal sent to the referee's watch":'whole ball over the whole line',bar:p,stat:['SIGNAL','< 1 S'],whip};
 }
 
-/* ============================== Typography, Overlays & HUD ============================== */
-const FONT='"Inter Tight",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif',MONO='"JetBrains Mono",ui-monospace,Consolas,monospace';
+
 let CAPS=[
   [[0.0,"Did that ball *cross the line?*"],[2.6,"From the pitch, it's *too fast to see.*"]],
   [[0.0,"A goal needs the *whole ball* over the *whole line.*"],[1.9,"Partly over the line? *Still no goal.*"]],
@@ -664,6 +672,10 @@ let CAPS=[
   [[0.0,"Each camera finds the ball: their *sight lines cross.*"],[2.7,"The keeper blocks a few? *The others still see it.*"]],
   [[0.0,"Whole ball over? The system says *GOAL.*"],[1.4,"The referee's watch *buzzes,* in *under a second.*"]]
 ];
+
+
+/* ============================== Typography, Overlays & HUD ============================== */
+const FONT='"Inter Tight",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif',MONO='"JetBrains Mono",ui-monospace,Consolas,monospace';
 
 const CANFILTER='filter' in octx,HASLS='letterSpacing' in octx;
 function frost(x,y,w,h,r,a){
@@ -742,7 +754,7 @@ function drawHUD(st){
 const _cw={};
 function drawOverlay(st){
   const g=octx;
-  const T='HOW GOAL-LINE TECHNOLOGY WORKS';
+  const T=CFG.title;
   g.save();g.font='900 64px '+FONT;ls(3);let sz=64;const tw=g.measureText(T).width;if(tw>940)sz=64*940/tw;
   g.font='900 '+sz+'px '+FONT;g.textAlign='center';g.textBaseline='middle';g.lineJoin='round';g.lineWidth=14;g.strokeStyle='rgba(3,8,18,.92)';g.strokeText(T,W/2,90);
   g.shadowColor=st.acc;g.shadowBlur=22;g.fillStyle=st.acc;g.fillText(T,W/2,90);g.restore();ls(0);
@@ -757,6 +769,7 @@ function drawOverlay(st){
 const updaters=[update0,update1,update2,update3,update4];
 const el={seek:document.getElementById('seek'),time:document.getElementById('time'),play:document.getElementById('play'),rec:document.getElementById('rec')};
 el.seek.max=TOTAL;
+function setTiming(d){retime(d);el.seek.max=TOTAL}
 let T_TIME=0,playing=true,recording=null,lastScene=-1,ST=null;
 
 function update(t){
@@ -819,7 +832,7 @@ el.rec.onclick=()=>{
   const stream=out.captureStream(60),chunks=[],mr=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:20e6}:{videoBitsPerSecond:20e6});
   const ext=(mr.mimeType||mime).includes('mp4')?'mp4':'webm';
   mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);
-  mr.onstop=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(chunks,{type:mr.mimeType||'video/'+ext}));a.download='how-goal-line-technology-works.'+ext;a.click()};
+  mr.onstop=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(chunks,{type:mr.mimeType||'video/'+ext}));a.download=CFG.rec+'.'+ext;a.click()};
   T_TIME=0;setPlay(true);recording=mr;mr.start(250);el.rec.textContent='■ STOP';el.rec.classList.add('on');
 };
 
