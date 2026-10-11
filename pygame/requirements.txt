@@ -1,0 +1,2 @@
+pygame>=2.1.3
+imageio-ffmpeg   # optional: provides ffmpeg for --render if it is not installed
