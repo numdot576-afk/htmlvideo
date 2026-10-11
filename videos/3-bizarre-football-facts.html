@@ -37,10 +37,10 @@
 <div id="ctl">
   <button id="play" title="Play / pause (Space)">❚❚</button>
   <div class="sep"></div>
-  <button class="sc" data-s="0">Intro</button><button class="sc" data-s="1">Fog</button><button class="sc" data-s="2">Posts</button><button class="sc" data-s="3">Pitch</button><button class="sc" data-s="4">Outro</button>
+  <button class="sc" data-s="0">Fog</button><button class="sc" data-s="1">Posts</button><button class="sc" data-s="2">Pitch</button><button class="sc" data-s="3">Outro</button>
   <div class="sep"></div>
-  <input id="seek" type="range" min="0" max="45" step="0.001" value="0">
-  <span id="time">0.0 / 45 s</span>
+  <input id="seek" type="range" min="0" max="41" step="0.001" value="0">
+  <span id="time">0.0 / 41 s</span>
   <button id="rec" title="Record complete high-res pass (1080x1920)">● REC</button>
 </div>
 
@@ -52,11 +52,11 @@ if(typeof THREE==="undefined"){document.getElementById("stage").innerHTML="<div 
 const EMBED=/[?&]embed=1/.test(location.search);if(EMBED)document.documentElement.classList.add("embed");
 
 const CFG={title:'3 BIZARRE FOOTBALL FACTS',led:'RULES & STADIUMS',rec:'3-bizarre-football-facts',
-  sdur:[4.5,13.0,11.5,11.5,4.5],
-  looks:[['#04080a','#0c1d18','#2ecc71',.75,'#ffd21f',1.0],['#04070c','#0f1620','#5cb3d6',.65,'#5ed2ff',1.0],['#080503','#1d1309','#e59838',.70,'#ffb830',1.0],
+  sdur:[13.0,11.5,11.5,4.5],
+  looks:[['#04070c','#0f1620','#5cb3d6',.65,'#5ed2ff',1.0],['#080503','#1d1309','#e59838',.70,'#ffb830',1.0],
          ['#02080d','#081a28','#00d2ff',.75,'#00f5d4',1.0],['#04080a','#0c1d18','#2ecc71',.75,'#ffd21f',1.0]]};
 /* The creator's script, captions, title, callout labels and HUD text are kept exactly as written; this file only
-   rebuilds the visuals and animation. */
+   rebuilds the visuals and animation. The intro scene was removed at the creator's request. */
 /* =====================================================================================
    EXPLAINER TEMPLATE: rules this file follows (keep them for every new topic)
    1. One 1080x1920 canvas. Three.js draws the 3D; title, HUD, callouts and captions are drawn on top
@@ -424,7 +424,7 @@ scene.fog=new THREE.FogExp2(0x2a3744,0); // always present (density 0 outside th
 const world=new THREE.Group();scene.add(world);
 const groups=[];for(let i=0;i<NS;i++){const g=new THREE.Group();scene.add(g);groups.push(g)}
 const CALL=[];const call=(si,obj,p,text,t0,t1,side=0)=>CALL.push({si,obj,p,text,t0,t1,side});
-const FOCUS=[0,1,2,3,4].map(()=>({c:new THREE.Vector3(),s:2}));
+const FOCUS=[...Array(NS)].map(()=>({c:new THREE.Vector3(),s:2}));
 function lights(k,h,f,r){key.intensity=k;hemi.intensity=h;fillL.intensity=f;rimL.intensity=r}
 const PL=new THREE.PointLight(0xffffff,0,8,2);world.add(PL);
 const whipAt=(t,...cuts)=>Math.max(0,...cuts.map(c=>Math.pow(clamp(1-Math.abs(t-c)/.16),2)));
@@ -514,7 +514,7 @@ function posePedestals(t,intro){PED.visible=true;
 
 /* ============================== SET B: 1945, a match in thick fog ============================== */
 // field z < 8, goal line z = 8, terrace behind the goal
-const S1=groups[1],SB=V(100,0,0);
+const S1=groups[0],SB=V(100,0,0);
 const FOGW=new THREE.Group();FOGW.position.copy(SB);S1.add(FOGW);
 {const pitch=new THREE.Mesh(new THREE.PlaneGeometry(90,90),M.grass);pitch.rotation.x=-Math.PI/2;pitch.receiveShadow=true;FOGW.add(pitch);
  flatLine(FOGW,0,8-.06,60,.12);flatLine(FOGW,0,8-5.5,18.32,.12);[-9.16,9.16].forEach(x=>flatLine(FOGW,x,8-2.75,.12,5.5));
@@ -542,9 +542,9 @@ const FOG_SPR=[...Array(24)].map(()=>{const s=new THREE.Sprite(new THREE.SpriteM
 const FOG_SEED=FOG_SPR.map(()=>[rnd()*44-22,1+rnd()*3,rnd()*34-24,.3+rnd()*.6]);
 const MIST=glowPoints(240,.06);FOGW.add(MIST);const MIST_SEED=[...Array(240)].map(()=>[rnd()*24-12,rnd()*3.5+.2,rnd()*30-22]);
 const FOG_TAG=tag(FOGW,0,1.5,-8);
-call(1,FOG_TAG,V(0,0,0),'THICK LONDON SMOG',.05,.28,0);
-call(1,DYN[11].P.headTag,V(0,.3,0),'12 PLAYERS ON PITCH',.38,.65,1);
-call(1,FAN.headTag,V(0,.1,0),'FAN PLAYING IN GOAL',.68,.96,-1);
+call(0,FOG_TAG,V(0,0,0),'THICK LONDON SMOG',.05,.28,0);
+call(0,DYN[11].P.headTag,V(0,.3,0),'12 PLAYERS ON PITCH',.38,.65,1);
+call(0,FAN.headTag,V(0,.1,0),'FAN PLAYING IN GOAL',.68,.96,-1);
 const FAN_PATH=[V(2.6,0,10.6),V(5.9,0,10.6),V(5.6,0,7.0),V(.3,0,7.2)]; // round the outside of the right-hand post
 const bez=(P,u)=>{const a=1-u;return V(a*a*a*P[0].x+3*a*a*u*P[1].x+3*a*u*u*P[2].x+u*u*u*P[3].x,0,a*a*a*P[0].z+3*a*a*u*P[1].z+3*a*u*u*P[2].z+u*u*u*P[3].z)};
 function dynPos(i,t){const b=DYN_BASE[i];return[b[0]+1.5*Math.sin(t*.55+i*1.3),b[1]+1.2*Math.cos(t*.47+i*.7)]}
@@ -555,7 +555,7 @@ function poseTeam(list,posFn,t,cx,cz,rate,amp){list.forEach((m,i)=>{let [x,z]=po
   m.P.root.position.set(x,0,z);m.P.root.rotation.y=Math.atan2(x2-x,z2-z);applyPose(m.P,runPose(t*rate+i*1.7,.18,amp))})}
 
 /* ============================== SET C: 1976, square posts under floodlights ============================== */
-const S2=groups[2],SC=V(200,0,0);
+const S2=groups[1],SC=V(200,0,0);
 const POSTW=new THREE.Group();POSTW.position.copy(SC);S2.add(POSTW);
 {const fl=new THREE.Mesh(new THREE.PlaneGeometry(70,70),M.grass);fl.rotation.x=-Math.PI/2;fl.position.z=-20;fl.receiveShadow=true;POSTW.add(fl);
  flatLine(POSTW,0,-.06,40,.12);flatLine(POSTW,0,-5.44,18.32,.12);[-9.16,9.16].forEach(x=>flatLine(POSTW,x,-2.75,.12,5.5));
@@ -592,9 +592,9 @@ const IMPACT=glowSprite(new THREE.Color(3,2.4,1.2),1.2);POSTW.add(IMPACT);
 const DUST=glowPoints(90,.045);POSTW.add(DUST);const DUST_DIR=[...Array(90)].map(()=>V((rnd()-.5)*1.4,rnd()-.4,-rnd()*.9-.1).normalize().multiplyScalar(.5+rnd()*1.3));
 const TRAIL=glowPoints(70,.07);POSTW.add(TRAIL);const GHOST=glowPoints(70,.06);POSTW.add(GHOST);
 const SQ_TAG=tag(POSTW,.2,2.5,-.06),RD_TAG=tag(POSTW,-.25,2.5,-.06);
-call(2,SQ_TAG,V(0,.1,0),'SQUARE WOODEN BAR',.04,.36,1);
-call(2,SQ_TAG,V(0,-.1,0),'FLAT: RICOCHET OUT',.36,.65,-1);
-call(2,RD_TAG,V(0,.1,0),'ROUND: DEFLECTS IN',.66,.96,1);
+call(1,SQ_TAG,V(0,.1,0),'SQUARE WOODEN BAR',.04,.36,1);
+call(1,SQ_TAG,V(0,-.1,0),'FLAT: RICOCHET OUT',.36,.65,-1);
+call(1,RD_TAG,V(0,.1,0),'ROUND: DEFLECTS IN',.66,.96,1);
 // shot geometry: square bar => the flat face sends it straight back out; round bar => glances down and into the net
 const SQ_HIT=x=>V(x,2.46,-.23);          // ball centre touching the front face
 const RD_HIT=x=>V(x,2.39,-.19);          // ball centre touching the lower front of the round bar
@@ -610,7 +610,7 @@ const SHOT1={S:V(0,BR,-11),x:-.4,T:.62,t0:4.6},SHOT2={S:V(1.2,.45,-6.2),x:.7,T:.
 const CS={S:V(0,.75,-3.3),T:.5,slow:.5};
 
 /* ============================== SET D: the pitch that changes width (top-down, length up the screen) ============================== */
-const S3=groups[3],SD=V(300,0,0);
+const S3=groups[2],SD=V(300,0,0);
 const PW=new THREE.Group();PW.position.copy(SD);S3.add(PW);
 {const t=tex(T_GRASS.image,{srgb:true});t.anisotropy=MAXANI;t.repeat.set(130/11,170/11);
  const g=new THREE.Mesh(new THREE.PlaneGeometry(130,170),new THREE.MeshStandardMaterial({map:t,roughness:.92,envMapIntensity:.2}));g.rotation.x=-Math.PI/2;g.receiveShadow=true;PW.add(g)}
@@ -631,9 +631,9 @@ const CAL_ROD=box(1,.35,.35,CYAN);CAL.add(CAL_ROD);
 const CAL_END=[-1,1].map(()=>{const e=box(.6,.6,3.4,CYAN);CAL.add(e);return e});
 const CAL_TXT=bigLabel('WIDTH: 64m - 75m','#00f5d4',6,640);CAL_TXT.position.set(0,2,-5);CAL.add(CAL_TXT);
 const LEN_TXT=bigLabel('LENGTH: 100m - 110m','#00f5d4',4.4,1200);LEN_TXT.position.set(0,2,-30);PW.add(LEN_TXT);
-call(3,CAL,V(0,.2,0),'NO FIXED SIZE',.05,.35,0);
-call(3,TOUCH[0],V(0,.3,-6),'MIN: 64 METRES',.36,.65,-1);
-call(3,WINGS[1],V(0,-12,.3),'MAX: 75 METRES',.66,.96,1);
+call(2,CAL,V(0,.2,0),'NO FIXED SIZE',.05,.35,0);
+call(2,TOUCH[0],V(0,.3,-6),'MIN: 64 METRES',.36,.65,-1);
+call(2,WINGS[1],V(0,-12,.3),'MAX: 75 METRES',.66,.96,1);
 // width over time: deliberate snaps between narrow (0) and wide (1)
 const WK=[[0,.45],[1.4,.45],[2.4,1],[4.4,1],[5.4,0],[7.2,0],[8.2,1],[9.6,1],[10.6,0],[11.5,0]];
 function stretchAt(t){for(let i=1;i<WK.length;i++)if(t<=WK[i][0])return lerp(WK[i-1][1],WK[i][1],easeInOut((t-WK[i-1][0])/(WK[i][0]-WK[i-1][0])));return WK[WK.length-1][1]}
@@ -641,20 +641,13 @@ function stretchAt(t){for(let i=1;i<WK.length;i++)if(t<=WK[i][0])return lerp(WK[
 /* ============================== shared reset ============================== */
 function resetShared(){PED.visible=false;lights(2.6,.55,.7,1.1);PL.intensity=0;scene.fog.density=0;camera.up.set(0,1,0)}
 
-/* ---------- SCENE 0 : INTRO ---------- */
-function update0(t){
-  const dur=SDUR[0],p=t/dur;posePedestals(t,true);FOCUS[0].c.set(0,0,0);FOCUS[0].s=1.2;
-  setCam(mixCam([.2,1.15,4.3,0,.66,0],[0,1.0,3.75,0,.68,0],easeInOut(p)),34,t);
-  return{main:'NO PLAYERS',sub:'rules, stadiums & glitches',bar:p,stat:['FACTS','3'],flash:.12*(bump(t,.6,.12)+bump(t,.85,.12)+bump(t,1.1,.12))};
-}
-
-/* ---------- SCENE 1 : 1945, THE FOG MATCH ---------- */
+/* ---------- SCENE 0 : 1945, THE FOG MATCH ---------- */
 const STAND_FAN={drop:0,lean:.05,twist:0,nod:0,turn:0,hipL:[0,0,.06],knL:.05,hipR:[0,0,-.06],knR:.05,uL:[.15,-1,.05],fL:[.1,-.95,.3],uR:[-.15,-1,.05],fR:[-.1,-.95,.3]};
 const LIE={...KP.back,lean:0,nod:.3,knL:.6,knR:.15,hipL:[-.5,0,.15],uL:[.7,.2,.4],fL:[.3,.6,.6],uR:[-.9,-.2,.1],fR:[-.6,.3,.5]};
 const _hv=new THREE.Vector3();
-function update1(t){
-  const dur=SDUR[1],p=t/dur,cut=8.2,shotB=t>=cut,tb=t-cut;
-  lights(1.1,.6,.35,.5);FOCUS[1].c.set(SB.x,0,shotB?8:-7);FOCUS[1].s=shotB?8:14;
+function update0(t){
+  const dur=SDUR[0],p=t/dur,cut=8.2,shotB=t>=cut,tb=t-cut;
+  lights(1.1,.6,.35,.5);FOCUS[0].c.set(SB.x,0,shotB?8:-7);FOCUS[0].s=shotB?8:14;
   // the fan: waves on the terrace, vaults the wall, sprints round the post into goal, then dives to save
   const fanU=easeInOut(seg(tb,1.05,2.65));let pos=V(2.6,.4,12.1),ry=Math.PI,rz=0,pose={...STAND_FAN,uR:[-.25,.95,.1],fR:[-.1+.5*Math.sin(t*9),.95,.2]};
   if(shotB&&tb>=.55&&tb<1.05){const u=seg(tb,.55,1.05);pos.set(2.6,lerp(.4,0,u)+.75*Math.sin(u*Math.PI),lerp(12.1,10.6,u));
@@ -688,10 +681,10 @@ function update1(t){
   return{main:shotB?'FAN IN GOAL':'1945 FOG MATCH',sub:shotB?'Arsenal keeper knocked out':'Dynamo Moscow played with 12',bar:p,stat:['MEN ON PITCH','12'],whip,flash:shotB?.2*bump(tb,3.35,.12):0};
 }
 
-/* ---------- SCENE 2 : 1976, SQUARE POSTS ---------- */
-function update2(t){
-  const dur=SDUR[2],p=t/dur,c1=5.95,cut=7.6,isRound=t>=cut,tb=t-cut;
-  lights(1.9,.45,.55,1.3);FOCUS[2].c.set(SC.x,1.2,-3);FOCUS[2].s=7;
+/* ---------- SCENE 1 : 1976, SQUARE POSTS ---------- */
+function update1(t){
+  const dur=SDUR[1],p=t/dur,c1=5.95,cut=7.6,isRound=t>=cut,tb=t-cut;
+  lights(1.9,.45,.55,1.3);FOCUS[1].c.set(SC.x,1.2,-3);FOCUS[1].s=7;
   let bp,hitT=-1,hitP=null,flashA=0,shake=0,trailFn=null;
   if(t<c1){const tau=t-SHOT1.t0;bp=squareShot(SHOT1.S,SHOT1.x,SHOT1.T,Math.max(0,tau));hitT=SHOT1.t0+SHOT1.T;hitP=SQ_HIT(SHOT1.x);
     if(tau>0)trailFn=dt=>squareShot(SHOT1.S,SHOT1.x,SHOT1.T,Math.max(0,tau-dt))}
@@ -729,10 +722,10 @@ function update2(t){
   return{main:isRound?'ROUND POST':'SQUARE POSTS',sub:isRound?'deflects down into net (goal)':'Hampden Park 1976: bounced out',bar:p,stat:['BANNED','1976'],whip:whipAt(t,c1,cut),flash:.22*flashA};
 }
 
-/* ---------- SCENE 3 : NO FIXED PITCH SIZE ---------- */
-function update3(t){
-  const dur=SDUR[3],p=t/dur;
-  lights(1.8,.55,.5,1.0);FOCUS[3].c.set(SD.x,0,0);FOCUS[3].s=60;
+/* ---------- SCENE 2 : NO FIXED PITCH SIZE ---------- */
+function update2(t){
+  const dur=SDUR[2],p=t/dur;
+  lights(1.8,.55,.5,1.0);FOCUS[2].c.set(SD.x,0,0);FOCUS[2].s=60;
   const stretch=stretchAt(t),wm=lerp(64,75,stretch),hw=wm/2;
   TOUCH.forEach((m,i)=>m.position.x=(i?1:-1)*hw);TOUCH_GLOW.forEach((m,i)=>{m.position.x=(i?1:-1)*hw;m.material.opacity=.25+.2*Math.abs(Math.sin(t*3))});
   XLINES.forEach(m=>m.scale.x=wm/64);
@@ -747,15 +740,14 @@ function update3(t){
   return{main:'VARIABLE PITCH',sub:stretch>.5?'wide: creates space for wingers':'narrow: suffocates opponent attacks',bar:p,stat:['WIDTH','64-75m'],flash:.08*snap};
 }
 
-/* ---------- SCENE 4 : OUTRO ---------- */
-function update4(t){
-  const dur=SDUR[4],p=t/dur;posePedestals(t+6,false);FOCUS[4].c.set(0,0,0);FOCUS[4].s=1.2;
+/* ---------- SCENE 3 : OUTRO ---------- */
+function update3(t){
+  const dur=SDUR[3],p=t/dur;posePedestals(t+6,false);FOCUS[3].c.set(0,0,0);FOCUS[3].s=1.2;
   setCam(mixCam([0,1.0,3.75,0,.68,0],[0,1.15,4.4,0,.7,0],easeInOut(p)),34,t);
   return{main:'0 PLAYERS',sub:'fog, goalposts and pitch sizes',bar:p,stat:['FACTS','3']};
 }
 
 let CAPS=[
-  [[0.0,"*Three bizarre* football facts"],[2.0,"that have *nothing to do* with players."]],
   [[0.0,"During a *1945 match* in London,"],[2.2,"the fog was so dense that nobody noticed"],[5.2,"Dynamo Moscow was playing with *twelve men,*"],[8.2,"while a random fan jumped out of the crowd"],[10.5,"to play *goalie for Arsenal.*"]],
   [[0.0,"*Square goalposts* were banned worldwide"],[2.5,"after a *1976 European final,*"],[5.0,"because Saint-Étienne hit the *flat wooden bar* twice"],[8.0,"and argued round posts would have *bounced into the net.*"]],
   [[0.0,"Football pitches don’t actually have an *official fixed size.*"],[3.8,"FIFA rules allow home clubs to legally *shrink or widen* their field"],[7.6,"by several meters just to ruin their *opponent's tactics.*"]],
@@ -854,7 +846,7 @@ function drawOverlay(st){
 }
 
 /* ============================== animation loop ============================== */
-const updaters=[update0,update1,update2,update3,update4];
+const updaters=Array.from({length:NS},(_,i)=>window['update'+i]); // one updateN() per scene
 const el={seek:document.getElementById('seek'),time:document.getElementById('time'),play:document.getElementById('play'),rec:document.getElementById('rec')};
 el.seek.max=TOTAL;
 function setTiming(d){retime(d);el.seek.max=TOTAL}
