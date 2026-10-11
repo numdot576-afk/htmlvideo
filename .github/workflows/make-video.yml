@@ -1,0 +1,84 @@
+name: Make video
+
+# Run from the Actions tab: "Make video" -> "Run workflow", type a topic.
+# Needs the repository secret ANTHROPIC_API_KEY (Settings -> Secrets and variables -> Actions).
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: 'Topic, e.g. "How a bicycle gear works" (or, with "revise file", what to change)'
+        required: true
+      notes:
+        description: "Optional direction for Claude (what to show, what to leave out)"
+        required: false
+        default: ""
+      revise_file:
+        description: "Optional: revise this existing file instead, e.g. videos/how-a-lock-works.html"
+        required: false
+        default: ""
+      effort:
+        description: "How hard Claude thinks"
+        type: choice
+        options: [high, xhigh, max, medium]
+        default: high
+
+permissions:
+  contents: write
+
+concurrency:
+  group: make-video
+  cancel-in-progress: false
+
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+
+      - name: Write, check and render the video
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TOPIC: ${{ inputs.topic }}
+          NOTES: ${{ inputs.notes }}
+          REVISE_FILE: ${{ inputs.revise_file }}
+          EFFORT: ${{ inputs.effort }}
+        run: |
+          if [ -n "$REVISE_FILE" ]; then
+            node src/make.mjs --revise "$REVISE_FILE" "$TOPIC" --effort "$EFFORT"
+          else
+            node src/make.mjs "$TOPIC" --notes "$NOTES" --effort "$EFFORT"
+          fi
+
+      - name: Upload MP4, HTML and preview frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: video
+          path: |
+            videos/*.mp4
+            videos/*.html
+            out/
+          if-no-files-found: ignore
+
+      - name: Commit the HTML video
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add videos/*.html
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -m "Video: $TOPIC"
+          git push
+        env:
+          TOPIC: ${{ inputs.topic }}

@@ -1,0 +1,21 @@
+{
+  "name": "htmlvideo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI video maker: type a topic, Claude writes a 3D vertical explainer video as one HTML file, then it is checked and rendered to MP4.",
+  "type": "module",
+  "scripts": {
+    "make": "node src/make.mjs",
+    "generate": "node src/generate.mjs",
+    "validate": "node src/validate.mjs",
+    "render": "node src/render.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "playwright": "1.56.1",
+    "three": "^0.128.0"
+  }
+}
