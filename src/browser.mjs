@@ -8,6 +8,8 @@ import { createRequire } from "node:module";
 
 // three.js r128 is served from node_modules instead of the CDN: renders work offline and never change under us
 const THREE_JS = createRequire(import.meta.url).resolve("three/build/three.min.js");
+// GSAP likewise, for videos that use it (pinned to 3.13.0, the version the pages load from the CDN)
+const GSAP_JS = createRequire(import.meta.url).resolve("gsap/dist/gsap.min.js");
 
 export async function openVideo(file, { timeout = 60_000 } = {}) {
   const launch = {
@@ -22,6 +24,9 @@ export async function openVideo(file, { timeout = 60_000 } = {}) {
   const errors = [];
   await page.route(/three(\.js)?\/r128\/three\.min\.js|three@0\.128\.0\/build\/three\.min\.js/, (route) =>
     route.fulfill({ contentType: "application/javascript", body: fs.readFileSync(THREE_JS) }),
+  );
+  await page.route(/gsap@3\.13\.0\/dist\/gsap\.min\.js|gsap\/3\.13\.0\/gsap\.min\.js/, (route) =>
+    route.fulfill({ contentType: "application/javascript", body: fs.readFileSync(GSAP_JS) }),
   );
   // web fonts are nice to have: the pages fall back to system fonts, so a font that fails to load is only a warning
   const isFont = (url = "") => /fonts\.(googleapis|gstatic)\.com/.test(url);

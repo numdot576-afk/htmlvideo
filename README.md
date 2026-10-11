@@ -9,6 +9,8 @@ Type a topic, and Claude writes a 3D vertical (1080×1920) "How X works" explain
 
 **Videos made so far** (in `videos/`): how goal-line technology works, how a match ball is made, why the grass has stripes, the pitch that slides away, how semi-automated offside works.
 
+`videos/gsap-3d-demo.html` shows GSAP driving a three.js scene: one paused GSAP timeline is seeked every frame, so eases, staggers and keyframes stay frame-exact for export. GSAP 3.13.0 is served from `node_modules` during checks, like three.js.
+
 Open any `.html` file in a browser to watch it (play/pause, scene buttons, seek, ● REC to record).
 
 ## Make a video on GitHub
