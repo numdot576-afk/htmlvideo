@@ -340,13 +340,13 @@ function buildGoal(){
 
 /* ---- stadium: stands behind the goal and along both sides, roofs with floodlight strips, LED boards ---- */
 const ROOF_Y=20.6;
-function buildStadium(){
+function buildStadium(opt={}){ // opt.sides=false: only the stand behind the goal; opt.lamps=false: no floodlight glows (daytime)
   const g=new THREE.Group(),Q=(pts,m,ax,ay,cx,cy)=>{const o=polyMesh(pts,m,ax,ay,cx,cy);g.add(o);return o};
   const X=V(1,0,0),Y=V(0,1,0),Z=V(0,0,1);
   Q([V(-70,1.2,7),V(70,1.2,7),V(70,17,34),V(-70,17,34)],MAT.crowd,X,V(0,15.8,27).normalize(),50,25); // behind the goal
   Q([V(-70,0,7),V(70,0,7),V(70,1.2,7),V(-70,1.2,7)],MAT.concrete,X,Y,10);
   Q([V(-70,17,34),V(70,17,34),V(70,ROOF_Y+1.2,34),V(-70,ROOF_Y+1.2,34)],MAT.concrete,X,Y,10);
-  [-1,1].forEach(s=>{
+  if(opt.sides!==false)[-1,1].forEach(s=>{
     Q([V(40*s,1.2,8),V(40*s,1.2,-110),V(67*s,17,-110),V(67*s,17,8)],MAT.crowd,Z,V(27*s,15.8,0).normalize(),50,25); // sides
     Q([V(40*s,0,8),V(40*s,0,-110),V(40*s,1.2,-110),V(40*s,1.2,8)],MAT.concrete,Z,Y,10);
     Q([V(67*s,17,8),V(67*s,17,-110),V(67*s,ROOF_Y+1.2,-110),V(67*s,ROOF_Y+1.2,8)],MAT.concrete,Z,Y,10);
@@ -362,7 +362,7 @@ function buildStadium(){
   const b=box(64,.9,.12,MAT.board);b.position.set(0,.45,4.6);g.add(b);
   const led=new THREE.Mesh(new THREE.PlaneGeometry(64,.84),MAT.led);led.rotation.y=Math.PI;led.position.set(0,.45,4.535);g.add(led);
   // floodlight lamps: glowing points along every roof edge
-  const lamps=[];for(let x=-66;x<=66;x+=6)lamps.push(V(x,ROOF_Y-.45,8.5));[-1,1].forEach(s=>{for(let z=-100;z<=6;z+=6)lamps.push(V(41.7*s,ROOF_Y-.45,z))});
+  const lamps=[];if(opt.lamps!==false){for(let x=-66;x<=66;x+=6)lamps.push(V(x,ROOF_Y-.45,8.5));if(opt.sides!==false)[-1,1].forEach(s=>{for(let z=-100;z<=6;z+=6)lamps.push(V(41.7*s,ROOF_Y-.45,z))})}
   lamps.forEach(p=>{const l=glowSprite(new THREE.Color(2.2,2.1,1.8),2.6);l.material.opacity=1;l.position.copy(p);g.add(l)});
   return {root:g,roofTag:tag(g,-4,ROOF_Y-.4,8.6)};
 }
